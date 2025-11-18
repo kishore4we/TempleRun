@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import {GameEngine as RNGameEngine} from 'react-native-game-engine';
 import {useDispatch, useSelector} from 'react-redux';
 import {
   GestureHandlerRootView,
