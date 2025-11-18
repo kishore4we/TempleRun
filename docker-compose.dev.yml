@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (Development)
+  postgres:
+    image: postgres:15-alpine
+    container_name: templerun-postgres-dev
+    environment:
+      POSTGRES_DB: templerun
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - templerun-dev-network
+
+  # Redis Cache (Development)
+  redis:
+    image: redis:7-alpine
+    container_name: templerun-redis-dev
+    ports:
+      - "6379:6379"
+    networks:
+      - templerun-dev-network
+
+volumes:
+  postgres_dev_data:
+    driver: local
+
+networks:
+  templerun-dev-network:
+    driver: bridge
