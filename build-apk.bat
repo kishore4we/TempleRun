@@ -64,18 +64,13 @@ echo Step 1/6: Creating React Native project...
 echo (This may take 2-3 minutes)
 echo.
 
-call npx @react-native-community/cli@latest init TempleRunBuild --template react-native-template-typescript --skip-install
+REM React Native 0.71+ includes TypeScript by default, no template needed
+call npx @react-native-community/cli@latest init TempleRunBuild --skip-install --skip-git-init --pm npm
 
 if errorlevel 1 (
     echo [X] Failed to create React Native project
-    echo.
-    echo Trying alternative method...
-    call npx react-native@latest init TempleRunBuild --template react-native-template-typescript --skip-install
-    if errorlevel 1 (
-        echo [X] Alternative method also failed
-        pause
-        exit /b 1
-    )
+    pause
+    exit /b 1
 )
 
 echo.

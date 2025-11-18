@@ -30,7 +30,7 @@ jobs:
 
       - name: Create React Native project
         run: |
-          npx @react-native-community/cli@latest init TempleRunBuild --template react-native-template-typescript --skip-install
+          npx @react-native-community/cli@latest init TempleRunBuild --skip-install --skip-git-init --pm npm
 
       - name: Copy game source code
         run: |
