@@ -64,9 +64,8 @@ echo Step 1/6: Creating React Native project...
 echo (This may take 2-3 minutes)
 echo.
 
-REM React Native 0.71+ includes TypeScript by default, no template needed
-REM Using explicit version to avoid "Invalid Version: latest" error
-call npx react-native@0.72.6 init TempleRunBuild --skip-install
+REM Using React Native 0.74.0 which has proper template support
+call npx @react-native-community/cli@13.6.4 init TempleRunBuild --version 0.74.0 --skip-install
 
 if errorlevel 1 (
     echo [X] Failed to create React Native project
