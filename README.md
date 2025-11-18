@@ -2,13 +2,29 @@
 
 A scalable Temple Run-style endless runner game for Android and iOS, designed to handle 10,000 users initially and scale to 1 million users.
 
-## 📱 Mobile App Setup Required
+## 🚀 Quick Start
 
-**The mobile app needs native project initialization.** The backend is fully functional and ready to use.
+### Backend (Ready to Test!)
+✅ **Backend is fully functional** - Test it now:
+```bash
+docker-compose -f docker-compose.dev.yml up -d
+cd backend && npm install && npm run migrate && npm run dev
+test-backend.bat  # or ./test-backend.sh on Linux/Mac
+```
 
-👉 **See [MOBILE_SETUP_REQUIRED.md](MOBILE_SETUP_REQUIRED.md)** for mobile app setup instructions.
+### Mobile App (2 Options)
 
-✅ **Backend is ready** - You can test it now with `test-backend.bat` (Windows) or `./test-backend.sh` (Linux/Mac)
+**Option 1: Build & Release APK** (Recommended)
+```bash
+# Automated with GitHub Actions
+git tag v1.0.0
+git push origin v1.0.0
+# Wait 15 min → APK ready on GitHub Releases!
+```
+👉 **See [RELEASE_GUIDE.md](RELEASE_GUIDE.md)** for complete build & release instructions
+
+**Option 2: Development Setup**
+👉 **See [MOBILE_SETUP_REQUIRED.md](MOBILE_SETUP_REQUIRED.md)** for local dev setup
 
 ## Architecture Overview
 
