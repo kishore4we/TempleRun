@@ -2,6 +2,14 @@
 
 A scalable Temple Run-style endless runner game for Android and iOS, designed to handle 10,000 users initially and scale to 1 million users.
 
+## 📱 Mobile App Setup Required
+
+**The mobile app needs native project initialization.** The backend is fully functional and ready to use.
+
+👉 **See [MOBILE_SETUP_REQUIRED.md](MOBILE_SETUP_REQUIRED.md)** for mobile app setup instructions.
+
+✅ **Backend is ready** - You can test it now with `test-backend.bat` (Windows) or `./test-backend.sh` (Linux/Mac)
+
 ## Architecture Overview
 
 ### Technology Stack
