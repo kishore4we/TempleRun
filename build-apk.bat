@@ -66,7 +66,7 @@ echo.
 
 REM React Native 0.71+ includes TypeScript by default, no template needed
 REM Using explicit version to avoid "Invalid Version: latest" error
-call npx react-native@0.72.6 init TempleRunBuild --skip-install --skip-git-init --pm npm
+call npx react-native@0.72.6 init TempleRunBuild --skip-install
 
 if errorlevel 1 (
     echo [X] Failed to create React Native project
