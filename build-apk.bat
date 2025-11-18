@@ -32,6 +32,15 @@ if errorlevel 1 (
 echo [OK] Java found
 java -version
 
+REM Check Java version - Gradle 8.6 requires JDK 17 or 21, not 25
+for /f "tokens=3" %%i in ('java -version 2^>^&1 ^| findstr /i "version"') do set JAVA_VER=%%i
+set JAVA_VER=%JAVA_VER:"=%
+echo.
+echo NOTE: If you have Java 25, you need JDK 17 or 21 for Gradle.
+echo       Download from: https://adoptium.net/temurin/releases/
+echo       Set JAVA_HOME to JDK 17/21 before running this script.
+echo.
+
 REM Check Android SDK
 if not defined ANDROID_HOME (
     echo [X] ANDROID_HOME not set!
@@ -89,14 +98,14 @@ echo.
 
 cd TempleRunBuild
 
-call npm install
-call npm install --save ^
+call npm install --legacy-peer-deps
+call npm install --legacy-peer-deps --save ^
     @react-navigation/native@^6.1.9 ^
     @react-navigation/stack@^6.3.20 ^
     @reduxjs/toolkit@^1.9.7 ^
     react-redux@^8.1.3 ^
     axios@^1.6.0 ^
-    @react-native-async-storage/async-storage@^1.19.5 ^
+    @react-native-async-storage/async-storage@^2.0.0 ^
     react-native-gesture-handler@^2.13.4 ^
     react-native-reanimated@^3.5.4 ^
     react-native-safe-area-context@^4.7.4 ^
