@@ -65,7 +65,7 @@ echo (This may take 2-3 minutes)
 echo.
 
 REM React Native 0.71+ includes TypeScript by default, no template needed
-call npx @react-native-community/cli@latest init TempleRunBuild --skip-install --skip-git-init --pm npm
+call npx @react-native-community/cli init TempleRunBuild --skip-install --skip-git-init --pm npm
 
 if errorlevel 1 (
     echo [X] Failed to create React Native project
