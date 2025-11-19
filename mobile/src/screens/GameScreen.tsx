@@ -6,12 +6,9 @@ import {
   Dimensions,
   TouchableOpacity,
   Alert,
+  PanResponder,
 } from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
-import {
-  GestureDetector,
-  Gesture,
-} from 'react-native-gesture-handler';
 
 import {RootState} from '../store';
 import {
@@ -28,51 +25,23 @@ import gameService from '../services/gameService';
 
 const {width, height} = Dimensions.get('window');
 
-// Jungle themed emojis
-const JUNGLE_EMOJIS: {
-  player: string;
-  playerJumping: string;
-  playerSliding: string;
-  obstacles: {[key: string]: string};
-  coin: string;
-  powerups: {[key: string]: string};
-  decoration: string[];
-} = {
-  player: '🏃',
-  playerJumping: '🦘',
-  playerSliding: '🏃',
-  obstacles: {
-    wall: '🌴',
-    barrier: '🪨',
-    low: '🌿',
-    high: '🦜',
-    gap: '🕳️',
-  },
-  coin: '💎',
-  powerups: {
-    magnet: '🧲',
-    shield: '🛡️',
-    multiplier: '✨',
-    boost: '⚡',
-  },
-  decoration: ['🌳', '🌴', '🌿', '🍃', '🦎', '🦋'],
-};
-
 const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
   const dispatch = useDispatch();
   const gameState = useSelector((state: RootState) => state.game);
-  const engineRef = useRef<GameEngine>(new GameEngine());
+  const engineRef = useRef<GameEngine | null>(null);
   const gameLoopRef = useRef<number | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
-  const [renderTrigger, setRenderTrigger] = useState(0);
-  const [powerUpMessage, setPowerUpMessage] = useState<string>('');
+  const [, setRenderTrigger] = useState(0);
 
-  // Use refs for values accessed in game loop to avoid closure issues
   const isPausedRef = useRef(false);
   const isPlayingRef = useRef(false);
   const isGameOverRef = useRef(false);
 
-  // Keep refs in sync with state
+  // Initialize engine
+  if (!engineRef.current) {
+    engineRef.current = new GameEngine();
+  }
+
   useEffect(() => {
     isPausedRef.current = gameState.isPaused;
     isPlayingRef.current = gameState.isPlaying;
@@ -107,24 +76,22 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
       const deltaTime = (currentTime - lastTime) / 1000;
       lastTime = currentTime;
 
-      const result = engineRef.current.update(deltaTime);
+      if (engineRef.current) {
+        const result = engineRef.current.update(deltaTime);
 
-      if (result.coinsCollected > 0) {
-        dispatch(collectCoin(result.coinsCollected));
-      }
+        if (result.coinsCollected > 0) {
+          dispatch(collectCoin(result.coinsCollected));
+        }
 
-      if (result.distanceTraveled > 0) {
-        dispatch(updateDistance(result.distanceTraveled));
-      }
+        if (result.distanceTraveled > 0) {
+          dispatch(updateDistance(result.distanceTraveled));
+        }
 
-      if (result.powerUpCollected) {
-        showPowerUpMessage(result.powerUpCollected);
-      }
-
-      if (result.collision && !isGameOverRef.current) {
-        isGameOverRef.current = true;
-        handleGameOver();
-        return;
+        if (result.collision && !isGameOverRef.current) {
+          isGameOverRef.current = true;
+          handleGameOver();
+          return;
+        }
       }
 
       setRenderTrigger(prev => prev + 1);
@@ -141,17 +108,6 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
     }
   };
 
-  const showPowerUpMessage = (type: string) => {
-    const messages: {[key: string]: string} = {
-      magnet: '🧲 COIN MAGNET!',
-      shield: '🛡️ SHIELD ACTIVE!',
-      multiplier: '✨ 2X COINS!',
-      boost: '⚡ SPEED BOOST!',
-    };
-    setPowerUpMessage(messages[type] || '');
-    setTimeout(() => setPowerUpMessage(''), 2000);
-  };
-
   const handleGameOver = async () => {
     stopGameLoop();
     dispatch(endGame());
@@ -164,12 +120,12 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
         distance: gameState.distance,
       });
     } catch (error) {
-      // Silent fail for offline play
+      // Silent fail
     }
 
     Alert.alert(
-      '🌴 Game Over 🌴',
-      `Score: ${gameState.score}\nGems: ${gameState.coins} 💎\nDistance: ${Math.floor(gameState.distance)}m`,
+      'Game Over',
+      `Score: ${gameState.score}\nCoins: ${gameState.coins}\nDistance: ${Math.floor(gameState.distance)}m`,
       [
         {
           text: 'Home',
@@ -178,7 +134,9 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
         {
           text: 'Play Again',
           onPress: () => {
-            engineRef.current.reset();
+            if (engineRef.current) {
+              engineRef.current.reset();
+            }
             initGame();
           },
         },
@@ -194,231 +152,139 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
     }
   };
 
-  const swipeGesture = Gesture.Pan()
-    .onEnd(event => {
-      const {translationX, translationY} = event;
+  // Simple pan responder for swipe detection
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderRelease: (_, gestureState) => {
+        const {dx, dy} = gestureState;
 
-      if (Math.abs(translationX) > Math.abs(translationY)) {
-        // Horizontal swipe
-        if (translationX > 50) {
-          engineRef.current.handleSwipe(Direction.RIGHT);
-        } else if (translationX < -50) {
-          engineRef.current.handleSwipe(Direction.LEFT);
+        if (Math.abs(dx) > Math.abs(dy)) {
+          if (dx > 30) {
+            engineRef.current?.handleSwipe(Direction.RIGHT);
+          } else if (dx < -30) {
+            engineRef.current?.handleSwipe(Direction.LEFT);
+          }
+        } else {
+          if (dy < -30) {
+            engineRef.current?.handleSwipe(Direction.UP);
+          } else if (dy > 30) {
+            engineRef.current?.handleSwipe(Direction.DOWN);
+          }
         }
-      } else {
-        // Vertical swipe
-        if (translationY < -50) {
-          engineRef.current.handleSwipe(Direction.UP);
-        } else if (translationY > 50) {
-          engineRef.current.handleSwipe(Direction.DOWN);
-        }
-      }
-    });
+      },
+    })
+  ).current;
 
   const renderPlayer = () => {
+    if (!engineRef.current) return null;
     const player = engineRef.current.getPlayer();
-    const hasShield = engineRef.current.hasShield();
-    let emoji = JUNGLE_EMOJIS.player;
-    if (player.isJumping) emoji = JUNGLE_EMOJIS.playerJumping;
-    if (player.isSliding) emoji = JUNGLE_EMOJIS.playerSliding;
+    const leftPos = player.position.x + width / 2 - GAME_CONFIG.LANE_WIDTH;
+    const bottomPos = height - player.position.y - 200;
 
     return (
       <View
-        key="player"
         style={[
           styles.player,
           {
-            left: player.position.x + width / 2 - GAME_CONFIG.LANE_WIDTH,
-            bottom: height - player.position.y - 200,
+            left: leftPos,
+            bottom: bottomPos,
           },
-          hasShield && styles.shieldActive,
         ]}>
-        <Text style={styles.playerEmoji}>{emoji}</Text>
-        {hasShield && <Text style={styles.shieldEmoji}>🛡️</Text>}
+        <Text style={styles.emoji}>🏃</Text>
       </View>
     );
   };
 
   const renderObstacles = () => {
+    if (!engineRef.current) return null;
     return engineRef.current.getObstacles().map(obstacle => {
-      const emoji = JUNGLE_EMOJIS.obstacles[obstacle.obstacleType] || '🌴';
+      const leftPos = obstacle.position.x + width / 2 - GAME_CONFIG.LANE_WIDTH;
+      const bottomPos = height - obstacle.position.y - 200;
+
       return (
         <View
           key={obstacle.id}
           style={[
             styles.obstacle,
             {
-              left: obstacle.position.x + width / 2 - GAME_CONFIG.LANE_WIDTH,
-              bottom: height - obstacle.position.y - 200,
+              left: leftPos,
+              bottom: bottomPos,
             },
           ]}>
-          <Text style={styles.obstacleEmoji}>{emoji}</Text>
+          <Text style={styles.emoji}>🌴</Text>
         </View>
       );
     });
   };
 
   const renderCoins = () => {
-    return engineRef.current.getCoins().map(coin => (
-      <View
-        key={coin.id}
-        style={[
-          styles.coin,
-          {
-            left: coin.position.x + width / 2 - GAME_CONFIG.LANE_WIDTH,
-            bottom: height - coin.position.y - 200,
-          },
-        ]}>
-        <Text style={styles.coinEmoji}>{JUNGLE_EMOJIS.coin}</Text>
-      </View>
-    ));
-  };
+    if (!engineRef.current) return null;
+    return engineRef.current.getCoins().map(coin => {
+      const leftPos = coin.position.x + width / 2 - GAME_CONFIG.LANE_WIDTH;
+      const bottomPos = height - coin.position.y - 200;
 
-  const renderPowerUps = () => {
-    return engineRef.current.getPowerUps().map(powerup => {
-      const emoji = JUNGLE_EMOJIS.powerups[powerup.powerType] || '⭐';
       return (
         <View
-          key={powerup.id}
+          key={coin.id}
           style={[
-            styles.powerup,
+            styles.coin,
             {
-              left: powerup.position.x + width / 2 - GAME_CONFIG.LANE_WIDTH,
-              bottom: height - powerup.position.y - 200,
+              left: leftPos,
+              bottom: bottomPos,
             },
           ]}>
-          <Text style={styles.powerupEmoji}>{emoji}</Text>
+          <Text style={styles.coinEmoji}>💎</Text>
         </View>
       );
     });
   };
 
-  const renderActivePowerUps = () => {
-    const activePowerUps = engineRef.current.getActivePowerUps();
-    if (activePowerUps.length === 0) return null;
-
-    return (
-      <View style={styles.activePowerUpsContainer}>
-        {activePowerUps.map((powerUp, index) => (
-          <View key={index} style={styles.activePowerUp}>
-            <Text style={styles.activePowerUpEmoji}>
-              {JUNGLE_EMOJIS.powerups[powerUp.type]}
-            </Text>
-            <View style={styles.powerUpTimer}>
-              <View
-                style={[
-                  styles.powerUpTimerFill,
-                  {width: `${(powerUp.remainingTime / 5000) * 100}%`},
-                ]}
-              />
-            </View>
-          </View>
-        ))}
-      </View>
-    );
-  };
-
-  const renderJungleDecoration = () => {
-    return (
-      <View style={styles.jungleContainer}>
-        <View style={styles.leftJungle}>
-          <Text style={styles.jungleEmoji}>🌴</Text>
-          <Text style={styles.jungleEmoji}>🌳</Text>
-          <Text style={styles.jungleEmoji}>🌿</Text>
-        </View>
-        <View style={styles.rightJungle}>
-          <Text style={styles.jungleEmoji}>🌴</Text>
-          <Text style={styles.jungleEmoji}>🌳</Text>
-          <Text style={styles.jungleEmoji}>🌿</Text>
-        </View>
-      </View>
-    );
-  };
-
   return (
-    <View style={styles.container}>
-      <GestureDetector gesture={swipeGesture}>
-        <View style={styles.gameArea} collapsable={false}>
-          {/* Sky gradient effect */}
-          <View style={styles.sky} />
+    <View style={styles.container} {...panResponder.panHandlers}>
+      <View style={styles.gameArea}>
+        {/* Road */}
+        <View style={styles.road}>
+          <View style={styles.lane} />
+          <View style={styles.lane} />
+          <View style={styles.lane} />
+        </View>
 
-          {/* Jungle decoration */}
-          {renderJungleDecoration()}
+        {/* Game objects */}
+        {renderPlayer()}
+        {renderObstacles()}
+        {renderCoins()}
 
-          {/* Road lanes - jungle path */}
-          <View style={styles.road}>
-            {[0, 1, 2].map(lane => (
-              <View key={lane} style={styles.lane}>
-                <View style={styles.laneMarker} />
-              </View>
-            ))}
-          </View>
+        {/* HUD */}
+        <View style={styles.hud}>
+          <Text style={styles.hudText}>Score: {gameState.score}</Text>
+          <Text style={styles.hudText}>Coins: {gameState.coins}</Text>
+          <Text style={styles.hudText}>
+            {Math.floor(gameState.distance)}m
+          </Text>
+        </View>
 
-          {/* Game objects */}
-          {renderPlayer()}
-          {renderObstacles()}
-          {renderCoins()}
-          {renderPowerUps()}
+        <TouchableOpacity style={styles.pauseButton} onPress={handlePause}>
+          <Text style={styles.pauseButtonText}>
+            {gameState.isPaused ? '▶' : '⏸'}
+          </Text>
+        </TouchableOpacity>
 
-          {/* Power-up message */}
-          {powerUpMessage ? (
-            <View style={styles.powerUpMessageContainer}>
-              <Text style={styles.powerUpMessageText}>{powerUpMessage}</Text>
-            </View>
-          ) : null}
-
-          {/* HUD */}
-          <View style={styles.hud}>
-            <View style={styles.hudTop}>
-              <View style={styles.hudItem}>
-                <Text style={styles.hudLabel}>SCORE</Text>
-                <Text style={styles.hudValue}>{gameState.score}</Text>
-              </View>
-              <View style={styles.hudItem}>
-                <Text style={styles.hudLabel}>GEMS 💎</Text>
-                <Text style={styles.hudValue}>{gameState.coins}</Text>
-              </View>
-              <View style={styles.hudItem}>
-                <Text style={styles.hudLabel}>DISTANCE</Text>
-                <Text style={styles.hudValue}>{Math.floor(gameState.distance)}m</Text>
-              </View>
-            </View>
-
-            {/* Multiplier indicator */}
-            {engineRef.current.getMultiplier() > 1 && (
-              <View style={styles.multiplierBadge}>
-                <Text style={styles.multiplierText}>
-                  {engineRef.current.getMultiplier()}X
-                </Text>
-              </View>
-            )}
-
-            {renderActivePowerUps()}
-
-            <TouchableOpacity style={styles.pauseButton} onPress={handlePause}>
-              <Text style={styles.pauseButtonText}>
-                {gameState.isPaused ? '▶' : '⏸'}
-              </Text>
+        {gameState.isPaused && (
+          <View style={styles.pauseOverlay}>
+            <Text style={styles.pauseTitle}>PAUSED</Text>
+            <TouchableOpacity style={styles.menuButton} onPress={handlePause}>
+              <Text style={styles.menuButtonText}>RESUME</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => navigation.goBack()}>
+              <Text style={styles.menuButtonText}>QUIT</Text>
             </TouchableOpacity>
           </View>
-
-          {gameState.isPaused && (
-            <View style={styles.pauseOverlay}>
-              <Text style={styles.pauseTitle}>🌴 PAUSED 🌴</Text>
-              <TouchableOpacity
-                style={styles.resumeButton}
-                onPress={handlePause}>
-                <Text style={styles.resumeButtonText}>RESUME</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quitButton}
-                onPress={() => navigation.goBack()}>
-                <Text style={styles.quitButtonText}>QUIT</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </GestureDetector>
+        )}
+      </View>
     </View>
   );
 };
@@ -426,56 +292,18 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a472a', // Dark jungle green
+    backgroundColor: '#1a472a',
   },
   gameArea: {
     flex: 1,
-    position: 'relative',
-  },
-  sky: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-    backgroundColor: '#87CEEB',
-    opacity: 0.3,
-  },
-  jungleContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'none',
-  },
-  leftJungle: {
-    position: 'absolute',
-    left: 0,
-    top: 150,
-    bottom: 150,
-    justifyContent: 'space-around',
-    paddingLeft: 5,
-  },
-  rightJungle: {
-    position: 'absolute',
-    right: 0,
-    top: 150,
-    bottom: 150,
-    justifyContent: 'space-around',
-    paddingRight: 5,
-  },
-  jungleEmoji: {
-    fontSize: 30,
-    opacity: 0.7,
   },
   road: {
     position: 'absolute',
+    top: 100,
     bottom: 0,
     left: 0,
     right: 0,
-    top: 100,
-    backgroundColor: '#3d2817', // Brown jungle path
+    backgroundColor: '#3d2817',
     flexDirection: 'row',
     justifyContent: 'center',
   },
@@ -484,14 +312,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderRightWidth: 2,
     borderColor: '#5c4033',
-    justifyContent: 'flex-end',
-  },
-  laneMarker: {
-    flex: 1,
-    borderLeftWidth: 1,
-    borderColor: '#8b7355',
-    alignSelf: 'center',
-    width: 1,
   },
   player: {
     position: 'absolute',
@@ -500,27 +320,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  playerEmoji: {
-    fontSize: 45,
-  },
-  shieldActive: {
-    backgroundColor: 'rgba(100, 200, 255, 0.3)',
-    borderRadius: 25,
-  },
-  shieldEmoji: {
-    position: 'absolute',
-    top: -10,
-    fontSize: 20,
-  },
   obstacle: {
     position: 'absolute',
     width: 80,
     height: 80,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  obstacleEmoji: {
-    fontSize: 60,
   },
   coin: {
     position: 'absolute',
@@ -529,120 +334,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  emoji: {
+    fontSize: 40,
+  },
   coinEmoji: {
-    fontSize: 28,
-  },
-  powerup: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 20,
-  },
-  powerupEmoji: {
-    fontSize: 30,
-  },
-  powerUpMessageContainer: {
-    position: 'absolute',
-    top: '40%',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  powerUpMessageText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFD700',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: {width: 2, height: 2},
-    textShadowRadius: 5,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
+    fontSize: 25,
   },
   hud: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    padding: 15,
-    paddingTop: 40,
-  },
-  hudTop: {
+    top: 50,
+    left: 15,
+    right: 15,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  hudItem: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  hudLabel: {
-    color: '#88c999',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  hudValue: {
+  hudText: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-  },
-  multiplierBadge: {
-    position: 'absolute',
-    top: 100,
-    alignSelf: 'center',
-    backgroundColor: '#FFD700',
-    paddingHorizontal: 15,
-    paddingVertical: 5,
-    borderRadius: 15,
-  },
-  multiplierText: {
-    color: '#1a1a1a',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  activePowerUpsContainer: {
-    flexDirection: 'row',
-    marginTop: 10,
-  },
-  activePowerUp: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    padding: 5,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-  activePowerUpEmoji: {
-    fontSize: 20,
-  },
-  powerUpTimer: {
-    width: 30,
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 2,
-    marginTop: 3,
-  },
-  powerUpTimerFill: {
-    height: 4,
-    backgroundColor: '#FFD700',
-    borderRadius: 2,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 8,
+    borderRadius: 5,
   },
   pauseButton: {
     position: 'absolute',
-    top: 40,
+    top: 50,
     right: 15,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: 12,
-    borderRadius: 25,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 10,
+    borderRadius: 20,
   },
   pauseButtonText: {
     color: '#FFF',
-    fontSize: 24,
+    fontSize: 20,
   },
   pauseOverlay: {
     position: 'absolute',
@@ -650,40 +374,27 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(26, 71, 42, 0.95)',
+    backgroundColor: 'rgba(0,0,0,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   pauseTitle: {
-    fontSize: 42,
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#FFD700',
-    marginBottom: 40,
+    marginBottom: 30,
   },
-  resumeButton: {
+  menuButton: {
     backgroundColor: '#FFD700',
-    paddingVertical: 15,
-    paddingHorizontal: 50,
-    borderRadius: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    borderRadius: 20,
     marginBottom: 15,
   },
-  resumeButtonText: {
+  menuButtonText: {
     color: '#1a472a',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  quitButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingVertical: 15,
-    paddingHorizontal: 50,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: '#FFD700',
-  },
-  quitButtonText: {
-    color: '#FFF',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
 });
 
