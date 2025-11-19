@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
 import {
-  GestureHandlerRootView,
   GestureDetector,
   Gesture,
 } from 'react-native-gesture-handler';
@@ -337,7 +336,7 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
   };
 
   return (
-    <GestureHandlerRootView style={styles.container}>
+    <View style={styles.container}>
       <GestureDetector gesture={swipeGesture}>
         <View style={styles.gameArea}>
           {/* Sky gradient effect */}
@@ -420,7 +419,7 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
           )}
         </View>
       </GestureDetector>
-    </GestureHandlerRootView>
+    </View>
   );
 };
 
