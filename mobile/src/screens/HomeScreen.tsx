@@ -209,7 +209,6 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     marginTop: 30,
-    gap: 15,
   },
   statItem: {
     alignItems: 'center',
@@ -217,6 +216,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     minWidth: 80,
+    marginHorizontal: 7,
   },
   statEmoji: {
     fontSize: 20,
@@ -244,12 +244,12 @@ const styles = StyleSheet.create({
   },
   powerUpsList: {
     flexDirection: 'row',
-    gap: 15,
   },
   powerUpItem: {
     fontSize: 12,
     color: '#FFF',
     opacity: 0.7,
+    marginHorizontal: 7,
   },
 });
 

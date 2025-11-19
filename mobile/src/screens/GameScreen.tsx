@@ -30,7 +30,15 @@ import gameService from '../services/gameService';
 const {width, height} = Dimensions.get('window');
 
 // Jungle themed emojis
-const JUNGLE_EMOJIS = {
+const JUNGLE_EMOJIS: {
+  player: string;
+  playerJumping: string;
+  playerSliding: string;
+  obstacles: {[key: string]: string};
+  coin: string;
+  powerups: {[key: string]: string};
+  decoration: string[];
+} = {
   player: '🏃',
   playerJumping: '🦘',
   playerSliding: '🏃',
@@ -580,8 +588,7 @@ const styles = StyleSheet.create({
   multiplierBadge: {
     position: 'absolute',
     top: 100,
-    left: '50%',
-    transform: [{translateX: -30}],
+    alignSelf: 'center',
     backgroundColor: '#FFD700',
     paddingHorizontal: 15,
     paddingVertical: 5,
@@ -595,13 +602,13 @@ const styles = StyleSheet.create({
   activePowerUpsContainer: {
     flexDirection: 'row',
     marginTop: 10,
-    gap: 10,
   },
   activePowerUp: {
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     padding: 5,
     borderRadius: 8,
+    marginRight: 10,
   },
   activePowerUpEmoji: {
     fontSize: 20,
