@@ -52,7 +52,7 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
   const [achievements, setAchievements] = useState<Array<{id: number; text: string; icon: string}>>([]);
   const [nearMiss, setNearMiss] = useState(false);
   const [milestone, setMilestone] = useState<string | null>(null);
-  const [lastMilestone, setLastMilestone] = useState(0);
+  const lastMilestoneRef = useRef(0);
 
   // Screen effects
   const screenShake = useRef(new Animated.Value(0)).current;
@@ -1062,8 +1062,8 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
           // Check for milestones
           const currentDistance = Math.floor(gameState.distance + result.distanceTraveled);
           for (const m of MILESTONES) {
-            if (currentDistance >= m && lastMilestone < m) {
-              setLastMilestone(m);
+            if (currentDistance >= m && lastMilestoneRef.current < m) {
+              lastMilestoneRef.current = m;
               triggerMilestoneCelebration(m);
               break;
             }
@@ -1138,6 +1138,7 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
           text: 'Play Again',
           onPress: () => {
             setComboCount(0);
+            lastMilestoneRef.current = 0;
             engineRef.current?.reset();
             initGame();
           },
