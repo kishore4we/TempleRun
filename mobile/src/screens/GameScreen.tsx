@@ -32,6 +32,10 @@ const NUM_STARS = 12;
 const NUM_LEAVES = 10;
 const NUM_FIREFLIES = 8;
 const NUM_ENERGY_PARTICLES = 6;
+const NUM_DUST_PARTICLES = 8;
+
+// Milestone distances
+const MILESTONES = [100, 250, 500, 750, 1000, 1500, 2000];
 
 const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
   const dispatch = useDispatch();
@@ -44,6 +48,11 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
   const [showSpeedLines, setShowSpeedLines] = useState(false);
   const [comboCount, setComboCount] = useState(0);
   const [scorePopups, setScorePopups] = useState<Array<{id: number; value: number; x: number; y: number}>>([]);
+  const [stamina, setStamina] = useState(100);
+  const [achievements, setAchievements] = useState<Array<{id: number; text: string; icon: string}>>([]);
+  const [nearMiss, setNearMiss] = useState(false);
+  const [milestone, setMilestone] = useState<string | null>(null);
+  const [lastMilestone, setLastMilestone] = useState(0);
 
   // Screen effects
   const screenShake = useRef(new Animated.Value(0)).current;
@@ -145,6 +154,40 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
   // HUD animations
   const hudSlide = useRef(new Animated.Value(-100)).current;
   const hudOpacity = useRef(new Animated.Value(0)).current;
+
+  // Stamina bar animation
+  const staminaWidth = useRef(new Animated.Value(100)).current;
+  const staminaPulse = useRef(new Animated.Value(1)).current;
+
+  // Achievement popup animation
+  const achievementSlide = useRef(new Animated.Value(-200)).current;
+  const achievementOpacity = useRef(new Animated.Value(0)).current;
+
+  // Near miss effect
+  const nearMissScale = useRef(new Animated.Value(1)).current;
+  const nearMissOpacity = useRef(new Animated.Value(0)).current;
+
+  // Milestone celebration
+  const milestoneScale = useRef(new Animated.Value(0)).current;
+  const milestoneOpacity = useRef(new Animated.Value(0)).current;
+  const milestoneRotate = useRef(new Animated.Value(0)).current;
+
+  // Landing dust particles
+  const dustParticles = useRef(
+    Array(NUM_DUST_PARTICLES).fill(0).map(() => ({
+      x: new Animated.Value(0),
+      y: new Animated.Value(0),
+      opacity: new Animated.Value(0),
+      scale: new Animated.Value(1),
+    }))
+  ).current;
+
+  // Score shake
+  const scoreShake = useRef(new Animated.Value(0)).current;
+  const coinsShake = useRef(new Animated.Value(0)).current;
+
+  // Hitstop effect
+  const [hitstop, setHitstop] = useState(false);
 
   const isPausedRef = useRef(false);
   const isPlayingRef = useRef(false);
@@ -755,6 +798,191 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
     });
   };
 
+  // Hitstop - brief pause for impact
+  const triggerHitstop = (duration: number = 50) => {
+    setHitstop(true);
+    setTimeout(() => setHitstop(false), duration);
+  };
+
+  // Score shake animation
+  const triggerScoreShake = () => {
+    Animated.sequence([
+      Animated.timing(scoreShake, {toValue: 5, duration: 30, useNativeDriver: true}),
+      Animated.timing(scoreShake, {toValue: -5, duration: 30, useNativeDriver: true}),
+      Animated.timing(scoreShake, {toValue: 3, duration: 30, useNativeDriver: true}),
+      Animated.timing(scoreShake, {toValue: 0, duration: 30, useNativeDriver: true}),
+    ]).start();
+  };
+
+  const triggerCoinsShake = () => {
+    Animated.sequence([
+      Animated.timing(coinsShake, {toValue: 5, duration: 30, useNativeDriver: true}),
+      Animated.timing(coinsShake, {toValue: -5, duration: 30, useNativeDriver: true}),
+      Animated.timing(coinsShake, {toValue: 3, duration: 30, useNativeDriver: true}),
+      Animated.timing(coinsShake, {toValue: 0, duration: 30, useNativeDriver: true}),
+    ]).start();
+  };
+
+  // Near miss effect
+  const triggerNearMiss = () => {
+    setNearMiss(true);
+    nearMissOpacity.setValue(1);
+    nearMissScale.setValue(0.8);
+
+    Animated.parallel([
+      Animated.spring(nearMissScale, {
+        toValue: 1.2,
+        tension: 100,
+        friction: 5,
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.delay(300),
+        Animated.timing(nearMissOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => setNearMiss(false));
+  };
+
+  // Achievement popup
+  const showAchievement = (text: string, icon: string) => {
+    const id = Date.now();
+    setAchievements(prev => [...prev, {id, text, icon}]);
+
+    achievementOpacity.setValue(1);
+    achievementSlide.setValue(-200);
+
+    Animated.sequence([
+      Animated.spring(achievementSlide, {
+        toValue: 0,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.delay(2000),
+      Animated.timing(achievementSlide, {
+        toValue: -200,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setAchievements(prev => prev.filter(a => a.id !== id));
+    });
+  };
+
+  // Milestone celebration
+  const triggerMilestoneCelebration = (distance: number) => {
+    setMilestone(`${distance}m`);
+    milestoneScale.setValue(0);
+    milestoneOpacity.setValue(1);
+    milestoneRotate.setValue(0);
+
+    Animated.parallel([
+      Animated.spring(milestoneScale, {
+        toValue: 1,
+        tension: 80,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+      Animated.timing(milestoneRotate, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.delay(1500),
+        Animated.timing(milestoneOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => setMilestone(null));
+
+    // Show achievement for milestone
+    const badges: Record<number, {text: string; icon: string}> = {
+      100: {text: 'First Steps!', icon: '🥉'},
+      250: {text: 'Getting Warmed Up!', icon: '🏃'},
+      500: {text: 'Half Way There!', icon: '🥈'},
+      750: {text: 'Marathon Runner!', icon: '🏅'},
+      1000: {text: 'Jungle Master!', icon: '🥇'},
+      1500: {text: 'Legendary!', icon: '👑'},
+      2000: {text: 'Unstoppable!', icon: '🔥'},
+    };
+
+    if (badges[distance]) {
+      setTimeout(() => {
+        showAchievement(badges[distance].text, badges[distance].icon);
+      }, 500);
+    }
+  };
+
+  // Landing dust effect
+  const triggerLandingDust = (playerX: number) => {
+    dustParticles.forEach((dust, index) => {
+      const offsetX = (index - NUM_DUST_PARTICLES / 2) * 8;
+      dust.x.setValue(playerX + width / 2 - GAME_CONFIG.LANE_WIDTH + offsetX);
+      dust.y.setValue(height - 220);
+      dust.opacity.setValue(0.8);
+      dust.scale.setValue(0.5);
+
+      Animated.parallel([
+        Animated.timing(dust.y, {
+          toValue: height - 250 - Math.random() * 30,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dust.x, {
+          toValue: dust.x._value + (Math.random() - 0.5) * 40,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dust.opacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dust.scale, {
+          toValue: 1.5,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  };
+
+  // Update stamina bar
+  const updateStamina = (value: number) => {
+    setStamina(value);
+    Animated.timing(staminaWidth, {
+      toValue: value,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+
+    // Pulse when low
+    if (value < 30) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(staminaPulse, {
+            toValue: 1.1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(staminaPulse, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]),
+        {iterations: 3}
+      ).start();
+    }
+  };
+
   useEffect(() => {
     isPausedRef.current = gameState.isPaused;
     isPlayingRef.current = gameState.isPlaying;
@@ -783,7 +1011,7 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
     let lastTime = Date.now();
 
     const loop = () => {
-      if (isPausedRef.current || !isPlayingRef.current || isGameOverRef.current) {
+      if (isPausedRef.current || !isPlayingRef.current || isGameOverRef.current || hitstop) {
         gameLoopRef.current = requestAnimationFrame(loop);
         return;
       }
@@ -798,6 +1026,8 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
         if (result.coinsCollected > 0) {
           dispatch(collectCoin(result.coinsCollected));
           triggerScreenFlash();
+          triggerHitstop(30); // Brief pause for impact
+          triggerCoinsShake();
 
           // Combo system
           setComboCount(prev => {
@@ -827,6 +1057,20 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
 
         if (result.distanceTraveled > 0) {
           dispatch(updateDistance(result.distanceTraveled));
+          triggerScoreShake();
+
+          // Check for milestones
+          const currentDistance = Math.floor(gameState.distance + result.distanceTraveled);
+          for (const m of MILESTONES) {
+            if (currentDistance >= m && lastMilestone < m) {
+              setLastMilestone(m);
+              triggerMilestoneCelebration(m);
+              break;
+            }
+          }
+
+          // Update stamina (slowly regenerates, depletes on actions)
+          setStamina(prev => Math.min(100, prev + 0.1));
         }
 
         if (result.powerUpCollected) {
@@ -926,9 +1170,19 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
           if (dy < -30) {
             engineRef.current?.handleSwipe(Direction.UP);
             triggerJumpAnimation();
+            // Deplete stamina on jump
+            setStamina(prev => Math.max(0, prev - 5));
+            // Trigger landing dust after jump
+            setTimeout(() => {
+              if (engineRef.current) {
+                triggerLandingDust(engineRef.current.getPlayer().position.x);
+              }
+            }, 400);
           } else if (dy > 30) {
             engineRef.current?.handleSwipe(Direction.DOWN);
             triggerSlideAnimation();
+            // Deplete stamina on slide
+            setStamina(prev => Math.max(0, prev - 3));
           }
         }
       },
@@ -1456,6 +1710,112 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
     ));
   };
 
+  const renderStaminaBar = () => {
+    const staminaColor = stamina > 50 ? '#00ff88' : stamina > 25 ? '#ffaa00' : '#ff4444';
+
+    return (
+      <Animated.View style={[styles.staminaContainer, {transform: [{scale: staminaPulse}]}]}>
+        <View style={styles.staminaBarBg}>
+          <Animated.View
+            style={[
+              styles.staminaBarFill,
+              {
+                width: staminaWidth.interpolate({
+                  inputRange: [0, 100],
+                  outputRange: ['0%', '100%'],
+                }),
+                backgroundColor: staminaColor,
+              },
+            ]}
+          />
+        </View>
+        <Text style={styles.staminaLabel}>⚡ ENERGY</Text>
+      </Animated.View>
+    );
+  };
+
+  const renderAchievements = () => {
+    if (achievements.length === 0) return null;
+
+    return achievements.map(achievement => (
+      <Animated.View
+        key={achievement.id}
+        style={[
+          styles.achievementPopup,
+          {
+            transform: [{translateX: achievementSlide}],
+            opacity: achievementOpacity,
+          },
+        ]}>
+        <Text style={styles.achievementIcon}>{achievement.icon}</Text>
+        <View style={styles.achievementTextContainer}>
+          <Text style={styles.achievementTitle}>ACHIEVEMENT!</Text>
+          <Text style={styles.achievementText}>{achievement.text}</Text>
+        </View>
+      </Animated.View>
+    ));
+  };
+
+  const renderMilestone = () => {
+    if (!milestone) return null;
+
+    const rotation = milestoneRotate.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['-10deg', '0deg'],
+    });
+
+    return (
+      <Animated.View
+        style={[
+          styles.milestoneContainer,
+          {
+            transform: [{scale: milestoneScale}, {rotate: rotation}],
+            opacity: milestoneOpacity,
+          },
+        ]}>
+        <Text style={styles.milestoneIcon}>🎉</Text>
+        <Text style={styles.milestoneText}>{milestone}</Text>
+        <Text style={styles.milestoneIcon}>🎉</Text>
+      </Animated.View>
+    );
+  };
+
+  const renderNearMiss = () => {
+    if (!nearMiss) return null;
+
+    return (
+      <Animated.View
+        style={[
+          styles.nearMissContainer,
+          {
+            transform: [{scale: nearMissScale}],
+            opacity: nearMissOpacity,
+          },
+        ]}>
+        <Text style={styles.nearMissText}>CLOSE CALL!</Text>
+      </Animated.View>
+    );
+  };
+
+  const renderDustParticles = () => {
+    return dustParticles.map((dust, index) => (
+      <Animated.View
+        key={`dust-${index}`}
+        style={[
+          styles.dustParticle,
+          {
+            transform: [
+              {translateX: dust.x},
+              {translateY: dust.y},
+              {scale: dust.scale},
+            ],
+            opacity: dust.opacity,
+          },
+        ]}
+      />
+    ));
+  };
+
   return (
     <Animated.View
       style={[styles.container, {transform: [{translateX: screenShake}]}]}
@@ -1475,6 +1835,9 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
 
       {/* Particles */}
       {renderParticles()}
+
+      {/* Dust particles */}
+      {renderDustParticles()}
 
       {/* Speed lines */}
       {renderSpeedLines()}
@@ -1515,19 +1878,31 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
             opacity: hudOpacity,
           },
         ]}>
-        <View style={styles.hudItem}>
+        <Animated.View style={[styles.hudItem, {transform: [{translateX: scoreShake}]}]}>
           <Text style={styles.hudLabel}>SCORE</Text>
           <Text style={styles.hudValue}>{gameState.score}</Text>
-        </View>
-        <View style={styles.hudItem}>
+        </Animated.View>
+        <Animated.View style={[styles.hudItem, {transform: [{translateX: coinsShake}]}]}>
           <Text style={styles.hudLabel}>GEMS</Text>
           <Text style={styles.hudValue}>{gameState.coins}</Text>
-        </View>
+        </Animated.View>
         <View style={styles.hudItem}>
           <Text style={styles.hudLabel}>DISTANCE</Text>
           <Text style={styles.hudValue}>{Math.floor(gameState.distance)}m</Text>
         </View>
       </Animated.View>
+
+      {/* Stamina bar */}
+      {renderStaminaBar()}
+
+      {/* Achievements */}
+      {renderAchievements()}
+
+      {/* Milestone celebration */}
+      {renderMilestone()}
+
+      {/* Near miss alert */}
+      {renderNearMiss()}
 
       {/* Multiplier */}
       {engineRef.current && engineRef.current.getMultiplier() > 1 && (
@@ -2090,6 +2465,111 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 2,
+  },
+  staminaContainer: {
+    position: 'absolute',
+    top: 85,
+    left: 10,
+    right: 10,
+  },
+  staminaBarBg: {
+    height: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#00ff88',
+  },
+  staminaBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  staminaLabel: {
+    color: '#00ff88',
+    fontSize: 8,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  achievementPopup: {
+    position: 'absolute',
+    top: 130,
+    left: 10,
+    right: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    borderRadius: 15,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    zIndex: 200,
+  },
+  achievementIcon: {
+    fontSize: 30,
+    marginRight: 10,
+  },
+  achievementTextContainer: {
+    flex: 1,
+  },
+  achievementTitle: {
+    color: '#FFD700',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 2,
+  },
+  achievementText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  milestoneContainer: {
+    position: 'absolute',
+    top: height / 2 - 50,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    zIndex: 300,
+  },
+  milestoneIcon: {
+    fontSize: 40,
+  },
+  milestoneText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#FFD700',
+    marginHorizontal: 15,
+    textShadowColor: '#000',
+    textShadowOffset: {width: 2, height: 2},
+    textShadowRadius: 5,
+  },
+  nearMissContainer: {
+    position: 'absolute',
+    top: height / 2 + 50,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 250,
+  },
+  nearMissText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FF6B00',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: '#FF6B00',
+  },
+  dustParticle: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    backgroundColor: '#d4a574',
+    borderRadius: 4,
   },
 });
 
