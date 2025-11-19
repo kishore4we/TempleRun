@@ -88,9 +88,10 @@ echo.
 
 xcopy /E /I /Y mobile\src TempleRunBuild\src
 copy /Y mobile\tsconfig.json TempleRunBuild\
-copy /Y mobile\babel.config.js TempleRunBuild\
-copy /Y mobile\metro.config.js TempleRunBuild\
 copy /Y mobile\index.js TempleRunBuild\
+
+REM Don't copy babel.config.js - RN 0.74 has correct preset already
+REM Don't copy metro.config.js - use the default one
 
 echo.
 echo Step 3/6: Installing dependencies...
@@ -98,8 +99,8 @@ echo.
 
 cd TempleRunBuild
 
-call npm install --legacy-peer-deps
-call npm install --legacy-peer-deps --save ^
+call npm install --legacy-peer-deps --ignore-scripts
+call npm install --legacy-peer-deps --ignore-scripts --save ^
     @react-navigation/native@^6.1.9 ^
     @react-navigation/stack@^6.3.20 ^
     @reduxjs/toolkit@^1.9.7 ^
