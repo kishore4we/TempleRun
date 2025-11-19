@@ -9,8 +9,8 @@ class GameService {
       );
       return response.data.data?.sessionId || '';
     } catch (error) {
-      console.error('Failed to start game session:', error);
-      throw error;
+      // Return empty session ID for offline play
+      return '';
     }
   }
 
@@ -23,7 +23,6 @@ class GameService {
     try {
       await apiService.post('/game/end', sessionData);
     } catch (error) {
-      console.error('Failed to end game session:', error);
       // Don't throw - allow offline play
     }
   }
@@ -33,7 +32,6 @@ class GameService {
       const response = await apiService.get<ApiResponse<any>>('/game/stats');
       return response.data.data;
     } catch (error) {
-      console.error('Failed to fetch user stats:', error);
       return null;
     }
   }

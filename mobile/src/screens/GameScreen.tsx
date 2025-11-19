@@ -33,9 +33,20 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
   const dispatch = useDispatch();
   const gameState = useSelector((state: RootState) => state.game);
   const engineRef = useRef<GameEngine>(new GameEngine());
-  const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
+  const gameLoopRef = useRef<number | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
   const [renderTrigger, setRenderTrigger] = useState(0);
+
+  // Use refs for values accessed in game loop to avoid closure issues
+  const isPausedRef = useRef(false);
+  const isPlayingRef = useRef(false);
+  const isGameOverRef = useRef(false);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    isPausedRef.current = gameState.isPaused;
+    isPlayingRef.current = gameState.isPlaying;
+  }, [gameState.isPaused, gameState.isPlaying]);
 
   useEffect(() => {
     initGame();
@@ -45,23 +56,20 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
   }, []);
 
   const initGame = async () => {
-    try {
-      const id = await gameService.startGameSession();
-      setSessionId(id);
-      dispatch(startGame());
-      startGameLoop();
-    } catch (error) {
-      console.error('Failed to initialize game:', error);
-      dispatch(startGame());
-      startGameLoop();
-    }
+    isGameOverRef.current = false;
+    const id = await gameService.startGameSession();
+    setSessionId(id);
+    dispatch(startGame());
+    isPlayingRef.current = true;
+    startGameLoop();
   };
 
   const startGameLoop = () => {
     let lastTime = Date.now();
 
-    gameLoopRef.current = setInterval(() => {
-      if (gameState.isPaused || !gameState.isPlaying) {
+    const loop = () => {
+      if (isPausedRef.current || !isPlayingRef.current || isGameOverRef.current) {
+        gameLoopRef.current = requestAnimationFrame(loop);
         return;
       }
 
@@ -79,17 +87,22 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
         dispatch(updateDistance(result.distanceTraveled));
       }
 
-      if (result.collision) {
+      if (result.collision && !isGameOverRef.current) {
+        isGameOverRef.current = true;
         handleGameOver();
+        return;
       }
 
       setRenderTrigger(prev => prev + 1);
-    }, 1000 / 60); // 60 FPS
+      gameLoopRef.current = requestAnimationFrame(loop);
+    };
+
+    gameLoopRef.current = requestAnimationFrame(loop);
   };
 
   const stopGameLoop = () => {
     if (gameLoopRef.current) {
-      clearInterval(gameLoopRef.current);
+      cancelAnimationFrame(gameLoopRef.current);
       gameLoopRef.current = null;
     }
   };
