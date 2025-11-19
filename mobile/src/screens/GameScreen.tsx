@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   PanResponder,
+  Animated,
 } from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
 
@@ -34,6 +35,17 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
   const [, setRenderTrigger] = useState(0);
   const [powerUpMsg, setPowerUpMsg] = useState('');
 
+  // Animation refs
+  const bird1Anim = useRef(new Animated.Value(0)).current;
+  const bird2Anim = useRef(new Animated.Value(0)).current;
+  const bird3Anim = useRef(new Animated.Value(0)).current;
+  const cloud1Anim = useRef(new Animated.Value(0)).current;
+  const cloud2Anim = useRef(new Animated.Value(0)).current;
+  const tree1Anim = useRef(new Animated.Value(0)).current;
+  const tree2Anim = useRef(new Animated.Value(0)).current;
+  const playerBounce = useRef(new Animated.Value(0)).current;
+  const coinGlow = useRef(new Animated.Value(0)).current;
+
   const isPausedRef = useRef(false);
   const isPlayingRef = useRef(false);
   const isGameOverRef = useRef(false);
@@ -41,6 +53,118 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
   if (!engineRef.current) {
     engineRef.current = new GameEngine();
   }
+
+  // Start all animations
+  useEffect(() => {
+    startAnimations();
+  }, []);
+
+  const startAnimations = () => {
+    // Flying birds
+    Animated.loop(
+      Animated.timing(bird1Anim, {
+        toValue: 1,
+        duration: 3000,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    Animated.loop(
+      Animated.timing(bird2Anim, {
+        toValue: 1,
+        duration: 4000,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    Animated.loop(
+      Animated.timing(bird3Anim, {
+        toValue: 1,
+        duration: 2500,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    // Clouds
+    Animated.loop(
+      Animated.timing(cloud1Anim, {
+        toValue: 1,
+        duration: 15000,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    Animated.loop(
+      Animated.timing(cloud2Anim, {
+        toValue: 1,
+        duration: 20000,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    // Swaying trees
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(tree1Anim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(tree1Anim, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(tree2Anim, {
+          toValue: 1,
+          duration: 2500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(tree2Anim, {
+          toValue: 0,
+          duration: 2500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Player bounce
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(playerBounce, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(playerBounce, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Coin glow
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(coinGlow, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(coinGlow, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
 
   useEffect(() => {
     isPausedRef.current = gameState.isPaused;
@@ -114,10 +238,10 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
 
   const showPowerUp = (type: string) => {
     const msgs: Record<string, string> = {
-      magnet: '🧲 MAGNET!',
-      shield: '🛡️ SHIELD!',
-      multiplier: '✨ 2X GEMS!',
-      boost: '⚡ BOOST!',
+      magnet: '🧲 MAGNET POWER!',
+      shield: '🛡️ SHIELD ACTIVATED!',
+      multiplier: '✨ DOUBLE COINS!',
+      boost: '⚡ SPEED BOOST!',
     };
     setPowerUpMsg(msgs[type] || '');
     setTimeout(() => setPowerUpMsg(''), 1500);
@@ -137,12 +261,12 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
     } catch (error) {}
 
     Alert.alert(
-      '🌴 Game Over 🌴',
-      `Score: ${gameState.score}\nGems: ${gameState.coins} 💎\nDistance: ${Math.floor(gameState.distance)}m`,
+      '🦁 JUNGLE RUN OVER! 🦁',
+      `🏆 Score: ${gameState.score}\n💎 Gems: ${gameState.coins}\n📏 Distance: ${Math.floor(gameState.distance)}m`,
       [
         {text: 'Home', onPress: () => navigation.goBack()},
         {
-          text: 'Play Again',
+          text: 'Run Again!',
           onPress: () => {
             engineRef.current?.reset();
             initGame();
@@ -179,12 +303,12 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
 
   const getObstacleEmoji = (type: string) => {
     const emojis: Record<string, string> = {
-      wall: '🌴',
-      barrier: '🪨',
-      low: '🌿',
-      high: '🦜',
+      wall: '🦁',
+      barrier: '🐘',
+      low: '🐍',
+      high: '🦅',
     };
-    return emojis[type] || '🌴';
+    return emojis[type] || '🦁';
   };
 
   const getPowerUpEmoji = (type: string) => {
@@ -197,28 +321,121 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
     return emojis[type] || '⭐';
   };
 
+  const renderAnimatedBackground = () => {
+    const bird1X = bird1Anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-50, width + 50],
+    });
+    const bird2X = bird2Anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [width + 50, -50],
+    });
+    const bird3X = bird3Anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-30, width + 30],
+    });
+    const cloud1X = cloud1Anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [-100, width + 100],
+    });
+    const cloud2X = cloud2Anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [width + 100, -100],
+    });
+    const tree1Rotate = tree1Anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['-5deg', '5deg'],
+    });
+    const tree2Rotate = tree2Anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['5deg', '-5deg'],
+    });
+
+    return (
+      <>
+        {/* Animated clouds */}
+        <Animated.Text style={[styles.cloud, {transform: [{translateX: cloud1X}], top: 20}]}>
+          ☁️
+        </Animated.Text>
+        <Animated.Text style={[styles.cloud, {transform: [{translateX: cloud2X}], top: 50}]}>
+          ☁️
+        </Animated.Text>
+
+        {/* Flying birds */}
+        <Animated.Text style={[styles.flyingBird, {transform: [{translateX: bird1X}], top: 80}]}>
+          🦜
+        </Animated.Text>
+        <Animated.Text style={[styles.flyingBird, {transform: [{translateX: bird2X}], top: 100}]}>
+          🦅
+        </Animated.Text>
+        <Animated.Text style={[styles.flyingBird, {transform: [{translateX: bird3X}], top: 60}]}>
+          🦋
+        </Animated.Text>
+
+        {/* Left jungle trees - animated */}
+        <View style={styles.leftJungle}>
+          <Animated.Text style={[styles.jungleTree, {transform: [{rotate: tree1Rotate}]}]}>
+            🌴
+          </Animated.Text>
+          <Text style={styles.jungleTree}>🌳</Text>
+          <Animated.Text style={[styles.jungleTree, {transform: [{rotate: tree2Rotate}]}]}>
+            🌴
+          </Animated.Text>
+          <Text style={styles.jungleTree}>🌿</Text>
+          <Text style={styles.jungleAnimal}>🦎</Text>
+          <Text style={styles.jungleTree}>🌳</Text>
+        </View>
+
+        {/* Right jungle trees - animated */}
+        <View style={styles.rightJungle}>
+          <Animated.Text style={[styles.jungleTree, {transform: [{rotate: tree2Rotate}]}]}>
+            🌴
+          </Animated.Text>
+          <Text style={styles.jungleTree}>🌳</Text>
+          <Animated.Text style={[styles.jungleTree, {transform: [{rotate: tree1Rotate}]}]}>
+            🌴
+          </Animated.Text>
+          <Text style={styles.jungleTree}>🌿</Text>
+          <Text style={styles.jungleAnimal}>🐒</Text>
+          <Text style={styles.jungleTree}>🌳</Text>
+        </View>
+
+        {/* Bottom vegetation */}
+        <View style={styles.bottomVegetation}>
+          <Text style={styles.vegetation}>🌿🌱🌿🌱🌿🌱🌿🌱🌿</Text>
+        </View>
+      </>
+    );
+  };
+
   const renderPlayer = () => {
     if (!engineRef.current) return null;
     const player = engineRef.current.getPlayer();
     const hasShield = engineRef.current.hasShield();
 
-    let emoji = '🏃';
-    if (player.isJumping) emoji = '🦘';
-    if (player.isSliding) emoji = '🏃';
+    const bounceY = playerBounce.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, -5],
+    });
+
+    let emoji = '🏃‍♂️';
+    if (player.isJumping) emoji = '🦸‍♂️';
+    if (player.isSliding) emoji = '🏊‍♂️';
 
     return (
-      <View
+      <Animated.View
         style={[
           styles.player,
           {
             left: player.position.x + width / 2 - GAME_CONFIG.LANE_WIDTH,
             bottom: height - player.position.y - 200,
+            transform: [{translateY: bounceY}],
           },
           hasShield ? styles.shielded : null,
         ]}>
         <Text style={styles.playerEmoji}>{emoji}</Text>
         {hasShield && <Text style={styles.shieldIcon}>🛡️</Text>}
-      </View>
+      </Animated.View>
     );
   };
 
@@ -243,18 +460,24 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
 
   const renderCoins = () => {
     if (!engineRef.current) return null;
+    const glowScale = coinGlow.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1, 1.2],
+    });
+
     return engineRef.current.getCoins().map(coin => (
-      <View
+      <Animated.View
         key={coin.id}
         style={[
           styles.coin,
           {
             left: coin.position.x + width / 2 - GAME_CONFIG.LANE_WIDTH,
             bottom: height - coin.position.y - 200,
+            transform: [{scale: glowScale}],
           },
         ]}>
         <Text style={styles.coinEmoji}>💎</Text>
-      </View>
+      </Animated.View>
     ));
   };
 
@@ -295,22 +518,12 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
-      {/* Sky */}
+      {/* Sky gradient */}
       <View style={styles.sky} />
+      <View style={styles.skyGradient} />
 
-      {/* Jungle sides */}
-      <View style={styles.leftJungle}>
-        <Text style={styles.jungleTree}>🌴</Text>
-        <Text style={styles.jungleTree}>🌳</Text>
-        <Text style={styles.jungleTree}>🌴</Text>
-        <Text style={styles.jungleTree}>🌿</Text>
-      </View>
-      <View style={styles.rightJungle}>
-        <Text style={styles.jungleTree}>🌴</Text>
-        <Text style={styles.jungleTree}>🌳</Text>
-        <Text style={styles.jungleTree}>🌴</Text>
-        <Text style={styles.jungleTree}>🌿</Text>
-      </View>
+      {/* Animated background elements */}
+      {renderAnimatedBackground()}
 
       {/* Road/Path */}
       <View style={styles.road}>
@@ -335,7 +548,7 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
       {/* HUD */}
       <View style={styles.hud}>
         <View style={styles.hudItem}>
-          <Text style={styles.hudLabel}>SCORE</Text>
+          <Text style={styles.hudLabel}>🏆 SCORE</Text>
           <Text style={styles.hudValue}>{gameState.score}</Text>
         </View>
         <View style={styles.hudItem}>
@@ -343,7 +556,7 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
           <Text style={styles.hudValue}>{gameState.coins}</Text>
         </View>
         <View style={styles.hudItem}>
-          <Text style={styles.hudLabel}>DISTANCE</Text>
+          <Text style={styles.hudLabel}>📏 DIST</Text>
           <Text style={styles.hudValue}>{Math.floor(gameState.distance)}m</Text>
         </View>
       </View>
@@ -351,7 +564,7 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
       {/* Multiplier */}
       {engineRef.current && engineRef.current.getMultiplier() > 1 && (
         <View style={styles.multiplier}>
-          <Text style={styles.multiplierText}>2X</Text>
+          <Text style={styles.multiplierText}>🔥 2X 🔥</Text>
         </View>
       )}
 
@@ -360,18 +573,19 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
 
       {/* Pause button */}
       <TouchableOpacity style={styles.pauseBtn} onPress={handlePause}>
-        <Text style={styles.pauseBtnText}>{gameState.isPaused ? '▶' : '⏸'}</Text>
+        <Text style={styles.pauseBtnText}>{gameState.isPaused ? '▶️' : '⏸️'}</Text>
       </TouchableOpacity>
 
       {/* Pause overlay */}
       {gameState.isPaused && (
         <View style={styles.pauseOverlay}>
-          <Text style={styles.pauseTitle}>🌴 PAUSED 🌴</Text>
+          <Text style={styles.pauseTitle}>🌴 JUNGLE PAUSED 🌴</Text>
+          <Text style={styles.pauseSubtitle}>🦁 🐘 🦅 🐍</Text>
           <TouchableOpacity style={styles.menuBtn} onPress={handlePause}>
-            <Text style={styles.menuBtnText}>RESUME</Text>
+            <Text style={styles.menuBtnText}>▶️ RESUME</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quitBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.quitBtnText}>QUIT</Text>
+            <Text style={styles.quitBtnText}>🏠 QUIT</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -382,52 +596,81 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0d3d1f',
+    backgroundColor: '#0a2f14',
   },
   sky: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 120,
-    backgroundColor: '#4a90a4',
+    height: 140,
+    backgroundColor: '#87CEEB',
+  },
+  skyGradient: {
+    position: 'absolute',
+    top: 100,
+    left: 0,
+    right: 0,
+    height: 60,
+    backgroundColor: '#5ab078',
+    opacity: 0.5,
+  },
+  cloud: {
+    position: 'absolute',
+    fontSize: 40,
+  },
+  flyingBird: {
+    position: 'absolute',
+    fontSize: 25,
   },
   leftJungle: {
     position: 'absolute',
-    left: 5,
-    top: 120,
-    bottom: 50,
+    left: 2,
+    top: 140,
+    bottom: 40,
     justifyContent: 'space-around',
   },
   rightJungle: {
     position: 'absolute',
-    right: 5,
-    top: 120,
-    bottom: 50,
+    right: 2,
+    top: 140,
+    bottom: 40,
     justifyContent: 'space-around',
   },
   jungleTree: {
-    fontSize: 35,
-    opacity: 0.8,
+    fontSize: 38,
+  },
+  jungleAnimal: {
+    fontSize: 25,
+  },
+  bottomVegetation: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  vegetation: {
+    fontSize: 20,
   },
   road: {
     position: 'absolute',
-    top: 80,
+    top: 100,
     bottom: 0,
-    left: 50,
-    right: 50,
-    backgroundColor: '#5c3d2e',
+    left: 45,
+    right: 45,
+    backgroundColor: '#4a3728',
     flexDirection: 'row',
     justifyContent: 'center',
-    borderLeftWidth: 3,
-    borderRightWidth: 3,
-    borderColor: '#3d2817',
+    borderLeftWidth: 4,
+    borderRightWidth: 4,
+    borderColor: '#2d1f14',
   },
   lane: {
     width: GAME_CONFIG.LANE_WIDTH,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: '#7a5a4a',
+    borderColor: '#6b5344',
     borderStyle: 'dashed',
   },
   player: {
@@ -438,132 +681,141 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   playerEmoji: {
-    fontSize: 45,
+    fontSize: 42,
   },
   shielded: {
-    backgroundColor: 'rgba(100, 200, 255, 0.4)',
+    backgroundColor: 'rgba(100, 200, 255, 0.5)',
     borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#64c8ff',
   },
   shieldIcon: {
     position: 'absolute',
-    top: -5,
-    fontSize: 18,
+    top: -8,
+    fontSize: 20,
   },
   obstacle: {
     position: 'absolute',
-    width: 70,
-    height: 70,
+    width: 65,
+    height: 65,
     justifyContent: 'center',
     alignItems: 'center',
   },
   obstacleEmoji: {
-    fontSize: 50,
+    fontSize: 48,
   },
   coin: {
     position: 'absolute',
-    width: 30,
-    height: 30,
+    width: 35,
+    height: 35,
     justifyContent: 'center',
     alignItems: 'center',
   },
   coinEmoji: {
-    fontSize: 24,
+    fontSize: 28,
   },
   powerUp: {
     position: 'absolute',
-    width: 40,
-    height: 40,
+    width: 45,
+    height: 45,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderRadius: 22,
   },
   powerUpEmoji: {
-    fontSize: 28,
+    fontSize: 30,
   },
   powerUpMsgBox: {
     position: 'absolute',
-    top: 200,
+    top: 180,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   powerUpMsgText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#FFD700',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingHorizontal: 25,
+    paddingVertical: 10,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: '#FFD700',
   },
   hud: {
     position: 'absolute',
-    top: 40,
-    left: 10,
-    right: 60,
+    top: 45,
+    left: 8,
+    right: 55,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   hudItem: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FFD700',
   },
   hudLabel: {
-    color: '#88c999',
-    fontSize: 9,
+    color: '#FFD700',
+    fontSize: 8,
     fontWeight: 'bold',
   },
   hudValue: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   multiplier: {
     position: 'absolute',
-    top: 95,
+    top: 100,
     left: 0,
     right: 0,
     alignItems: 'center',
   },
   multiplierText: {
-    backgroundColor: '#FFD700',
-    color: '#1a1a1a',
-    fontSize: 16,
+    backgroundColor: '#FF4500',
+    color: '#FFF',
+    fontSize: 14,
     fontWeight: 'bold',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 12,
   },
   activePowerUps: {
     position: 'absolute',
-    top: 95,
-    left: 10,
+    top: 100,
+    left: 8,
     flexDirection: 'row',
   },
   activePowerUpItem: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: 5,
-    borderRadius: 8,
-    marginRight: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 6,
+    borderRadius: 10,
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: '#FFD700',
   },
   activePowerUpEmoji: {
-    fontSize: 18,
+    fontSize: 16,
   },
   pauseBtn: {
     position: 'absolute',
-    top: 40,
-    right: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: 10,
+    top: 45,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 8,
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FFD700',
   },
   pauseBtnText: {
-    color: '#FFF',
-    fontSize: 20,
+    fontSize: 18,
   },
   pauseOverlay: {
     position: 'absolute',
@@ -571,32 +823,36 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(13, 61, 31, 0.95)',
+    backgroundColor: 'rgba(10, 47, 20, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   pauseTitle: {
-    fontSize: 38,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#FFD700',
+    marginBottom: 10,
+  },
+  pauseSubtitle: {
+    fontSize: 30,
     marginBottom: 40,
   },
   menuBtn: {
     backgroundColor: '#FFD700',
     paddingVertical: 14,
-    paddingHorizontal: 50,
+    paddingHorizontal: 45,
     borderRadius: 25,
     marginBottom: 15,
   },
   menuBtnText: {
-    color: '#0d3d1f',
+    color: '#0a2f14',
     fontSize: 18,
     fontWeight: 'bold',
   },
   quitBtn: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingVertical: 14,
-    paddingHorizontal: 50,
+    paddingHorizontal: 45,
     borderRadius: 25,
     borderWidth: 2,
     borderColor: '#FFD700',
