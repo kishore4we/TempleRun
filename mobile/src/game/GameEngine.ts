@@ -6,16 +6,23 @@ export const GAME_CONFIG = {
   PLAYER_SIZE: {width: 40, height: 60},
   OBSTACLE_SIZE: {width: 80, height: 80},
   COIN_SIZE: {width: 30, height: 30},
-  INITIAL_SPEED: 5,
-  MAX_SPEED: 15,
-  SPEED_INCREMENT: 0.1,
-  SPEED_INCREMENT_INTERVAL: 1000, // Every 1 second
-  JUMP_VELOCITY: -15,
-  GRAVITY: 0.8,
+  POWERUP_SIZE: {width: 40, height: 40},
+  INITIAL_SPEED: 6,
+  MAX_SPEED: 18,
+  SPEED_INCREMENT: 0.15,
+  JUMP_VELOCITY: -18,
+  GRAVITY: 1.0,
   GROUND_Y: 500,
   SPAWN_DISTANCE: 800,
-  MIN_OBSTACLE_GAP: 300,
+  MIN_OBSTACLE_GAP: 250,
+  POWERUP_SPAWN_CHANCE: 0.08,
+  COIN_SPAWN_CHANCE: 0.6,
 };
+
+export interface ActivePowerUp {
+  type: 'magnet' | 'shield' | 'multiplier' | 'boost';
+  remainingTime: number;
+}
 
 export class GameEngine {
   private player: Player;
@@ -25,7 +32,8 @@ export class GameEngine {
   private speed: number = GAME_CONFIG.INITIAL_SPEED;
   private distance: number = 0;
   private lastObstacleZ: number = 0;
-  private gameObjects: Map<string, GameObject> = new Map();
+  private activePowerUps: ActivePowerUp[] = [];
+  private scoreMultiplier: number = 1;
 
   constructor() {
     this.player = this.createPlayer();
@@ -60,12 +68,24 @@ export class GameEngine {
     return this.powerups;
   }
 
+  public getActivePowerUps(): ActivePowerUp[] {
+    return this.activePowerUps;
+  }
+
   public getSpeed(): number {
     return this.speed;
   }
 
   public getDistance(): number {
     return this.distance;
+  }
+
+  public getMultiplier(): number {
+    return this.scoreMultiplier;
+  }
+
+  public hasShield(): boolean {
+    return this.activePowerUps.some(p => p.type === 'shield');
   }
 
   public handleSwipe(direction: Direction): void {
@@ -89,11 +109,13 @@ export class GameEngine {
         }
         break;
       case Direction.DOWN:
-        if (!this.player.isSliding && this.player.position.y === GAME_CONFIG.GROUND_Y) {
+        if (!this.player.isSliding && this.player.position.y >= GAME_CONFIG.GROUND_Y - 10) {
           this.player.isSliding = true;
+          this.player.size = {width: 40, height: 30}; // Shrink hitbox when sliding
           setTimeout(() => {
             this.player.isSliding = false;
-          }, 500);
+            this.player.size = GAME_CONFIG.PLAYER_SIZE;
+          }, 600);
         }
         break;
     }
@@ -103,9 +125,14 @@ export class GameEngine {
     coinsCollected: number;
     collision: boolean;
     distanceTraveled: number;
+    powerUpCollected: string | null;
   } {
     let coinsCollected = 0;
     let collision = false;
+    let powerUpCollected: string | null = null;
+
+    // Update active power-ups
+    this.updatePowerUps(deltaTime);
 
     // Update player physics
     if (this.player.isJumping) {
@@ -119,24 +146,32 @@ export class GameEngine {
       }
     }
 
+    // Calculate effective speed (boost power-up)
+    const effectiveSpeed = this.activePowerUps.some(p => p.type === 'boost')
+      ? this.speed * 1.5
+      : this.speed;
+
     // Update distance
-    const distanceDelta = this.speed * deltaTime;
+    const distanceDelta = effectiveSpeed * deltaTime;
     this.distance += distanceDelta;
 
     // Increase speed over time
-    if (Math.floor(this.distance) % 100 === 0) {
+    if (Math.floor(this.distance) % 50 === 0 && this.distance > 0) {
       this.speed = Math.min(
         this.speed + GAME_CONFIG.SPEED_INCREMENT,
         GAME_CONFIG.MAX_SPEED,
       );
     }
 
-    // Generate obstacles
+    // Generate game objects
     this.generateObstacles();
+
+    // Check for magnet effect
+    const hasMagnet = this.activePowerUps.some(p => p.type === 'magnet');
 
     // Update and check obstacles
     this.obstacles = this.obstacles.filter(obstacle => {
-      obstacle.position.y -= this.speed;
+      obstacle.position.y -= effectiveSpeed;
 
       if (obstacle.position.y < -100) {
         return false;
@@ -145,7 +180,14 @@ export class GameEngine {
       // Collision detection
       if (this.checkCollision(this.player, obstacle)) {
         if (!this.canAvoidObstacle(obstacle)) {
-          collision = true;
+          // Check for shield
+          if (this.hasShield()) {
+            // Remove shield
+            this.activePowerUps = this.activePowerUps.filter(p => p.type !== 'shield');
+            return false; // Destroy obstacle
+          } else {
+            collision = true;
+          }
         }
       }
 
@@ -154,36 +196,80 @@ export class GameEngine {
 
     // Update and collect coins
     this.coins = this.coins.filter(coin => {
-      coin.position.y -= this.speed;
+      coin.position.y -= effectiveSpeed;
 
       if (coin.position.y < -100) {
         return false;
       }
 
+      // Magnet effect - attract coins
+      if (hasMagnet) {
+        const dx = this.player.position.x - coin.position.x;
+        const dy = this.player.position.y - coin.position.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 200) {
+          coin.position.x += dx * 0.15;
+          coin.position.y += dy * 0.15;
+        }
+      }
+
       // Coin collection
       if (this.checkCollision(this.player, coin)) {
-        coinsCollected += coin.value;
+        coinsCollected += coin.value * this.scoreMultiplier;
         return false;
       }
 
       return true;
     });
 
-    // Update powerups
+    // Update and collect powerups
     this.powerups = this.powerups.filter(powerup => {
-      powerup.position.y -= this.speed;
-      return powerup.position.y > -100;
+      powerup.position.y -= effectiveSpeed;
+
+      if (powerup.position.y < -100) {
+        return false;
+      }
+
+      // Power-up collection
+      if (this.checkCollision(this.player, powerup)) {
+        this.activatePowerUp(powerup);
+        powerUpCollected = powerup.powerType;
+        return false;
+      }
+
+      return true;
     });
 
-    return {coinsCollected, collision, distanceTraveled: distanceDelta};
+    return {coinsCollected, collision, distanceTraveled: distanceDelta, powerUpCollected};
+  }
+
+  private updatePowerUps(deltaTime: number): void {
+    this.activePowerUps = this.activePowerUps.filter(powerUp => {
+      powerUp.remainingTime -= deltaTime * 1000;
+      return powerUp.remainingTime > 0;
+    });
+
+    // Update multiplier
+    this.scoreMultiplier = this.activePowerUps.some(p => p.type === 'multiplier') ? 2 : 1;
+  }
+
+  private activatePowerUp(powerup: PowerUp): void {
+    // Remove existing power-up of same type
+    this.activePowerUps = this.activePowerUps.filter(p => p.type !== powerup.powerType);
+
+    this.activePowerUps.push({
+      type: powerup.powerType,
+      remainingTime: powerup.duration,
+    });
   }
 
   private generateObstacles(): void {
     const currentZ = this.distance;
 
     if (currentZ - this.lastObstacleZ > GAME_CONFIG.MIN_OBSTACLE_GAP) {
-      const shouldSpawnObstacle = Math.random() > 0.3;
-      const shouldSpawnCoin = Math.random() > 0.5;
+      const shouldSpawnObstacle = Math.random() > 0.25;
+      const shouldSpawnCoin = Math.random() < GAME_CONFIG.COIN_SPAWN_CHANCE;
+      const shouldSpawnPowerUp = Math.random() < GAME_CONFIG.POWERUP_SPAWN_CHANCE;
 
       if (shouldSpawnObstacle) {
         const lane = Math.floor(Math.random() * GAME_CONFIG.LANES);
@@ -208,14 +294,44 @@ export class GameEngine {
         this.lastObstacleZ = currentZ;
       }
 
+      // Spawn coins in patterns
       if (shouldSpawnCoin) {
         const lane = Math.floor(Math.random() * GAME_CONFIG.LANES);
-        this.coins.push({
-          id: `coin-${Date.now()}-${Math.random()}`,
-          type: 'coin',
-          value: 1,
+        const coinCount = Math.floor(Math.random() * 3) + 1;
+
+        for (let i = 0; i < coinCount; i++) {
+          this.coins.push({
+            id: `coin-${Date.now()}-${Math.random()}-${i}`,
+            type: 'coin',
+            value: 1,
+            position: {
+              x: lane * GAME_CONFIG.LANE_WIDTH,
+              y: GAME_CONFIG.SPAWN_DISTANCE + i * 40,
+            },
+            size: GAME_CONFIG.COIN_SIZE,
+            lane,
+          });
+        }
+      }
+
+      // Spawn power-ups
+      if (shouldSpawnPowerUp) {
+        const lane = Math.floor(Math.random() * GAME_CONFIG.LANES);
+        const powerTypes: Array<'magnet' | 'shield' | 'multiplier' | 'boost'> = [
+          'magnet',
+          'shield',
+          'multiplier',
+          'boost',
+        ];
+        const powerType = powerTypes[Math.floor(Math.random() * powerTypes.length)];
+
+        this.powerups.push({
+          id: `powerup-${Date.now()}-${Math.random()}`,
+          type: 'powerup',
+          powerType,
+          duration: 5000, // 5 seconds
           position: {x: lane * GAME_CONFIG.LANE_WIDTH, y: GAME_CONFIG.SPAWN_DISTANCE},
-          size: GAME_CONFIG.COIN_SIZE,
+          size: GAME_CONFIG.POWERUP_SIZE,
           lane,
         });
       }
@@ -223,9 +339,10 @@ export class GameEngine {
   }
 
   private checkCollision(obj1: GameObject, obj2: GameObject): boolean {
+    const tolerance = 10; // Small tolerance for better gameplay feel
     return (
-      Math.abs(obj1.position.x - obj2.position.x) < (obj1.size.width + obj2.size.width) / 2 &&
-      Math.abs(obj1.position.y - obj2.position.y) < (obj1.size.height + obj2.size.height) / 2
+      Math.abs(obj1.position.x - obj2.position.x) < (obj1.size.width + obj2.size.width) / 2 - tolerance &&
+      Math.abs(obj1.position.y - obj2.position.y) < (obj1.size.height + obj2.size.height) / 2 - tolerance
     );
   }
 
@@ -244,8 +361,10 @@ export class GameEngine {
     this.obstacles = [];
     this.coins = [];
     this.powerups = [];
+    this.activePowerUps = [];
     this.speed = GAME_CONFIG.INITIAL_SPEED;
     this.distance = 0;
     this.lastObstacleZ = 0;
+    this.scoreMultiplier = 1;
   }
 }

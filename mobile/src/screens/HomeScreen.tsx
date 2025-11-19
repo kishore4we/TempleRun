@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ImageBackground,
   Dimensions,
 } from 'react-native';
 import {useDispatch, useSelector} from 'react-redux';
@@ -23,62 +22,90 @@ const HomeScreen: React.FC<{navigation: any}> = ({navigation}) => {
 
   return (
     <View style={styles.container}>
-      <ImageBackground
-        source={{uri: 'https://placeholder.svg?height=800&width=400'}}
-        style={styles.background}
-        blurRadius={3}>
-        <View style={styles.overlay}>
-          <Text style={styles.title}>TEMPLE RUN</Text>
-          <Text style={styles.subtitle}>
-            {isAuthenticated ? `Welcome, ${user?.username}!` : 'Endless Adventure'}
-          </Text>
+      {/* Jungle background decorations */}
+      <View style={styles.decorationTop}>
+        <Text style={styles.decorationEmoji}>🌴</Text>
+        <Text style={styles.decorationEmoji}>🦜</Text>
+        <Text style={styles.decorationEmoji}>🌴</Text>
+      </View>
 
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.playButton}
-              onPress={() => navigation.navigate('Game')}>
-              <Text style={styles.playButtonText}>PLAY</Text>
-            </TouchableOpacity>
+      <View style={styles.content}>
+        <View style={styles.titleContainer}>
+          <Text style={styles.titleEmoji}>🌿</Text>
+          <Text style={styles.title}>JUNGLE</Text>
+          <Text style={styles.titleEmoji}>🌿</Text>
+        </View>
+        <Text style={styles.subtitle}>RUN</Text>
+        <Text style={styles.tagline}>
+          {isAuthenticated ? `Welcome, ${user?.username}!` : 'Endless Adventure Awaits'}
+        </Text>
 
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.playButton}
+            onPress={() => navigation.navigate('Game')}>
+            <Text style={styles.playButtonText}>🏃 PLAY</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('Leaderboard')}>
+            <Text style={styles.secondaryButtonText}>🏆 LEADERBOARD</Text>
+          </TouchableOpacity>
+
+          {isAuthenticated ? (
             <TouchableOpacity
               style={styles.secondaryButton}
-              onPress={() => navigation.navigate('Leaderboard')}>
-              <Text style={styles.secondaryButtonText}>LEADERBOARD</Text>
+              onPress={() => navigation.navigate('Profile')}>
+              <Text style={styles.secondaryButtonText}>👤 PROFILE</Text>
             </TouchableOpacity>
-
-            {isAuthenticated ? (
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => navigation.navigate('Profile')}>
-                <Text style={styles.secondaryButtonText}>PROFILE</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => navigation.navigate('Login')}>
-                <Text style={styles.secondaryButtonText}>LOGIN / REGISTER</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {user && (
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{user.highScore}</Text>
-                <Text style={styles.statLabel}>High Score</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{user.totalCoins}</Text>
-                <Text style={styles.statLabel}>Total Coins</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{user.gamesPlayed}</Text>
-                <Text style={styles.statLabel}>Games Played</Text>
-              </View>
-            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.secondaryButtonText}>🔑 LOGIN / REGISTER</Text>
+            </TouchableOpacity>
           )}
         </View>
-      </ImageBackground>
+
+        {user && (
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={styles.statEmoji}>🏆</Text>
+              <Text style={styles.statValue}>{user.highScore}</Text>
+              <Text style={styles.statLabel}>High Score</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statEmoji}>💎</Text>
+              <Text style={styles.statValue}>{user.totalCoins}</Text>
+              <Text style={styles.statLabel}>Gems</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statEmoji}>🎮</Text>
+              <Text style={styles.statValue}>{user.gamesPlayed}</Text>
+              <Text style={styles.statLabel}>Games</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Power-ups info */}
+        <View style={styles.powerUpsInfo}>
+          <Text style={styles.powerUpsTitle}>Power-Ups</Text>
+          <View style={styles.powerUpsList}>
+            <Text style={styles.powerUpItem}>🧲 Magnet</Text>
+            <Text style={styles.powerUpItem}>🛡️ Shield</Text>
+            <Text style={styles.powerUpItem}>✨ 2X Coins</Text>
+            <Text style={styles.powerUpItem}>⚡ Boost</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Bottom decoration */}
+      <View style={styles.decorationBottom}>
+        <Text style={styles.decorationEmoji}>🌳</Text>
+        <Text style={styles.decorationEmoji}>🦎</Text>
+        <Text style={styles.decorationEmoji}>🌳</Text>
+      </View>
     </View>
   );
 };
@@ -86,36 +113,65 @@ const HomeScreen: React.FC<{navigation: any}> = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#1a472a', // Dark jungle green
   },
-  background: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
+  decorationTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 50,
+    paddingHorizontal: 20,
   },
-  overlay: {
+  decorationBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+  },
+  decorationEmoji: {
+    fontSize: 40,
+    opacity: 0.6,
+  },
+  content: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  titleEmoji: {
+    fontSize: 30,
+    marginHorizontal: 10,
+  },
   title: {
-    fontSize: 48,
+    fontSize: 52,
     fontWeight: 'bold',
     color: '#FFD700',
-    marginBottom: 10,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: {width: -1, height: 1},
-    textShadowRadius: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: {width: 2, height: 2},
+    textShadowRadius: 5,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 42,
+    fontWeight: 'bold',
+    color: '#88c999',
+    marginBottom: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: {width: 1, height: 1},
+    textShadowRadius: 3,
+  },
+  tagline: {
+    fontSize: 16,
     color: '#FFF',
-    marginBottom: 50,
+    marginBottom: 40,
+    opacity: 0.8,
   },
   buttonContainer: {
     width: '100%',
-    maxWidth: 300,
+    maxWidth: 280,
   },
   playButton: {
     backgroundColor: '#FFD700',
@@ -125,52 +181,75 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     elevation: 5,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowOffset: {width: 0, height: 3},
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
   },
   playButtonText: {
-    color: '#1a1a1a',
-    fontSize: 24,
+    color: '#1a472a',
+    fontSize: 22,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   secondaryButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingVertical: 15,
-    paddingHorizontal: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingVertical: 14,
+    paddingHorizontal: 30,
     borderRadius: 25,
     marginBottom: 10,
     borderWidth: 2,
-    borderColor: '#FFD700',
+    borderColor: '#88c999',
   },
   secondaryButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     textAlign: 'center',
   },
   statsContainer: {
     flexDirection: 'row',
-    marginTop: 50,
-    gap: 20,
+    marginTop: 30,
+    gap: 15,
   },
   statItem: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 15,
-    borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    padding: 12,
+    borderRadius: 12,
     minWidth: 80,
   },
+  statEmoji: {
+    fontSize: 20,
+    marginBottom: 5,
+  },
   statValue: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#FFD700',
   },
   statLabel: {
+    fontSize: 10,
+    color: '#88c999',
+    marginTop: 3,
+  },
+  powerUpsInfo: {
+    marginTop: 30,
+    alignItems: 'center',
+  },
+  powerUpsTitle: {
+    fontSize: 14,
+    color: '#88c999',
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  powerUpsList: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  powerUpItem: {
     fontSize: 12,
     color: '#FFF',
-    marginTop: 5,
+    opacity: 0.7,
   },
 });
 
