@@ -320,7 +320,7 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
 
   const renderJungleDecoration = () => {
     return (
-      <>
+      <View style={styles.jungleContainer}>
         <View style={styles.leftJungle}>
           <Text style={styles.jungleEmoji}>🌴</Text>
           <Text style={styles.jungleEmoji}>🌳</Text>
@@ -331,14 +331,14 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
           <Text style={styles.jungleEmoji}>🌳</Text>
           <Text style={styles.jungleEmoji}>🌿</Text>
         </View>
-      </>
+      </View>
     );
   };
 
   return (
     <View style={styles.container}>
       <GestureDetector gesture={swipeGesture}>
-        <View style={styles.gameArea}>
+        <View style={styles.gameArea} collapsable={false}>
           {/* Sky gradient effect */}
           <View style={styles.sky} />
 
@@ -437,23 +437,31 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: '30%',
+    height: 200,
     backgroundColor: '#87CEEB',
     opacity: 0.3,
+  },
+  jungleContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    pointerEvents: 'none',
   },
   leftJungle: {
     position: 'absolute',
     left: 0,
-    top: '20%',
-    bottom: '20%',
+    top: 150,
+    bottom: 150,
     justifyContent: 'space-around',
     paddingLeft: 5,
   },
   rightJungle: {
     position: 'absolute',
     right: 0,
-    top: '20%',
-    bottom: '20%',
+    top: 150,
+    bottom: 150,
     justifyContent: 'space-around',
     paddingRight: 5,
   },
@@ -466,7 +474,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '80%',
+    top: 100,
     backgroundColor: '#3d2817', // Brown jungle path
     flexDirection: 'row',
     justifyContent: 'center',
@@ -479,11 +487,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   laneMarker: {
-    height: '100%',
-    borderStyle: 'dashed',
+    flex: 1,
     borderLeftWidth: 1,
     borderColor: '#8b7355',
-    marginLeft: '50%',
+    alignSelf: 'center',
+    width: 1,
   },
   player: {
     position: 'absolute',
@@ -620,7 +628,7 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   powerUpTimerFill: {
-    height: '100%',
+    height: 4,
     backgroundColor: '#FFD700',
     borderRadius: 2,
   },
