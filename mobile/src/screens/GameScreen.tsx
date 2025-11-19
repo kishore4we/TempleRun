@@ -187,7 +187,7 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
   const coinsShake = useRef(new Animated.Value(0)).current;
 
   // Hitstop effect
-  const [hitstop, setHitstop] = useState(false);
+  const hitstopRef = useRef(false);
 
   const isPausedRef = useRef(false);
   const isPlayingRef = useRef(false);
@@ -800,8 +800,8 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
 
   // Hitstop - brief pause for impact
   const triggerHitstop = (duration: number = 50) => {
-    setHitstop(true);
-    setTimeout(() => setHitstop(false), duration);
+    hitstopRef.current = true;
+    setTimeout(() => hitstopRef.current = false, duration);
   };
 
   // Score shake animation
@@ -1011,7 +1011,7 @@ const GameScreen: React.FC<{navigation: any}> = ({navigation}) => {
     let lastTime = Date.now();
 
     const loop = () => {
-      if (isPausedRef.current || !isPlayingRef.current || isGameOverRef.current || hitstop) {
+      if (isPausedRef.current || !isPlayingRef.current || isGameOverRef.current || hitstopRef.current) {
         gameLoopRef.current = requestAnimationFrame(loop);
         return;
       }
